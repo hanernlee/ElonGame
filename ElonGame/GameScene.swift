@@ -10,22 +10,35 @@ import SpriteKit
 import GameplayKit
 
 class GameScene: SKScene {
-    var player: SKNode?
+    
+    // Nodes
+    var player : SKNode?
     var joystick : SKNode?
-    var joystickKnob: SKNode?
+    var joystickKnob : SKNode?
     
+    // Boolean
     var joystickAction = false
-    var knobRadius: CGFloat = 50.0
     
+    // Measure
+    var knobRadius : CGFloat = 50.0
+    
+    // Sprite Engine
+    var previousTimeInterval : TimeInterval = 0
+    var playerIsFacingRight = true
+    let playerSpeed = 4.0
+    
+    // didmove
     override func didMove(to view: SKView) {
+        
         player = childNode(withName: "player")
         joystick = childNode(withName: "joystick")
-        joystickKnob = childNode(withName: "knob")
+        joystickKnob = joystick?.childNode(withName: "knob")
     }
 }
 
 // MARK: Touches
 extension GameScene {
+    // Touch Began
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         for touch in touches {
             if let joystickKnob = joystickKnob {
@@ -35,12 +48,14 @@ extension GameScene {
         }
     }
     
+    // Touch Moved
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let joystick = joystick else { return }
         guard let joystickKnob = joystickKnob else { return }
         
         if !joystickAction { return }
         
+        // Distance
         for touch in touches {
             let position = touch.location(in: joystick)
             
@@ -55,11 +70,11 @@ extension GameScene {
         }
     }
     
+    // Touch End
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
         for touch in touches {
             let xJoystickCoordinate = touch.location(in: joystick!).x
             let xLimit: CGFloat = 200.0
-            
             if xJoystickCoordinate > -xLimit && xJoystickCoordinate < xLimit {
                 resetKnobPosition()
             }
@@ -75,5 +90,35 @@ extension GameScene {
         moveBack.timingMode = .linear
         joystickKnob?.run(moveBack)
         joystickAction = false
+    }
+}
+
+// MARK: Game Loop
+extension GameScene {
+    override func update(_ currentTime: TimeInterval) {
+        let deltaTime = currentTime - previousTimeInterval
+        previousTimeInterval = currentTime
+        
+        // Player movement
+        guard let joystickKnob = joystickKnob else { return }
+        let xPosition = Double(joystickKnob.position.x)
+        let displacement = CGVector(dx: deltaTime * xPosition * playerSpeed, dy: 0)
+        let move = SKAction.move(by: displacement, duration: 0)
+        let faceAction : SKAction!
+        let movingRight = xPosition > 0
+        let movingLeft = xPosition < 0
+        if movingLeft && playerIsFacingRight {
+            playerIsFacingRight = false
+            let faceMovement = SKAction.scaleX(to: -1, duration: 0.0)
+            faceAction = SKAction.sequence([move, faceMovement])
+        }
+        else if movingRight && !playerIsFacingRight {
+            playerIsFacingRight = true
+            let faceMovement = SKAction.scaleX(to: 1, duration: 0.0)
+            faceAction = SKAction.sequence([move, faceMovement])
+        } else {
+            faceAction = move
+        }
+        player?.run(faceAction)
     }
 }
