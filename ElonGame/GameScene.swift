@@ -15,6 +15,12 @@ class GameScene: SKScene {
     var player : SKNode?
     var joystick : SKNode?
     var joystickKnob : SKNode?
+    var cameraNode : SKCameraNode?
+    var mountains1 : SKNode?
+    var mountains2 : SKNode?
+    var mountains3 : SKNode?
+    var moon : SKNode?
+    var stars : SKNode?
     
     // Boolean
     var joystickAction = false
@@ -32,9 +38,16 @@ class GameScene: SKScene {
     
     // didmove
     override func didMove(to view: SKView) {
+        
         player = childNode(withName: "player")
         joystick = childNode(withName: "joystick")
         joystickKnob = joystick?.childNode(withName: "knob")
+        cameraNode = childNode(withName: "cameraNode") as? SKCameraNode
+        mountains1 = childNode(withName: "mountains1")
+        mountains2 = childNode(withName: "mountains2")
+        mountains3 = childNode(withName: "mountains3")
+        moon = childNode(withName: "moon")
+        stars = childNode(withName: "stars")
         
         playerStateMachine = GKStateMachine(states: [
             JumpingState(playerNode: player!),
@@ -42,7 +55,8 @@ class GameScene: SKScene {
             IdleState(playerNode: player!),
             LandingState(playerNode: player!),
             StunnedState(playerNode: player!),
-        ])
+            ])
+        
         playerStateMachine.enter(IdleState.self)
     }
 }
@@ -55,7 +69,10 @@ extension GameScene {
             if let joystickKnob = joystickKnob {
                 let location = touch.location(in: joystick!)
                 joystickAction = joystickKnob.frame.contains(location)
-                
+            }
+            
+            let location = touch.location(in: self)
+            if !(joystick?.contains(location))! {
                 playerStateMachine.enter(JumpingState.self)
             }
         }
@@ -112,22 +129,26 @@ extension GameScene {
         let deltaTime = currentTime - previousTimeInterval
         previousTimeInterval = currentTime
         
+        // Camera
+        cameraNode?.position.x = player!.position.x
+        joystick?.position.y = (cameraNode?.position.y)! - 100
+        joystick?.position.x = (cameraNode?.position.x)! - 300
+        
         // Player movement
         guard let joystickKnob = joystickKnob else { return }
         let xPosition = Double(joystickKnob.position.x)
         let positivePosition = xPosition < 0 ? -xPosition : xPosition
-        let displacement = CGVector(dx: deltaTime * xPosition * playerSpeed, dy: 0)
-        let move = SKAction.move(by: displacement, duration: 0)
-        let faceAction : SKAction!
-        let movingRight = xPosition > 0
-        let movingLeft = xPosition < 0
-
+        
         if floor(positivePosition) != 0 {
             playerStateMachine.enter(WalkingState.self)
         } else {
             playerStateMachine.enter(IdleState.self)
         }
-        
+        let displacement = CGVector(dx: deltaTime * xPosition * playerSpeed, dy: 0)
+        let move = SKAction.move(by: displacement, duration: 0)
+        let faceAction : SKAction!
+        let movingRight = xPosition > 0
+        let movingLeft = xPosition < 0
         if movingLeft && playerIsFacingRight {
             playerIsFacingRight = false
             let faceMovement = SKAction.scaleX(to: -1, duration: 0.0)
@@ -141,5 +162,21 @@ extension GameScene {
             faceAction = move
         }
         player?.run(faceAction)
+        
+        // Background Parallax
+        let parallax1 = SKAction.moveTo(x: (player?.position.x)!/(10), duration: 0.0)
+        mountains1?.run(parallax1)
+        
+        let parallax2 = SKAction.moveTo(x: (player?.position.x)!/(30), duration: 0.0)
+        mountains2?.run(parallax2)
+        
+        let parallax3 = SKAction.moveTo(x: (player?.position.x)!/(60), duration: 0.0)
+        mountains3?.run(parallax3)
+        
+        let parallax4 = SKAction.moveTo(x: (cameraNode?.position.x)!, duration: 0.0)
+        moon?.run(parallax4)
+        
+        let parallax5 = SKAction.moveTo(x: (cameraNode?.position.x)!, duration: 0.0)
+        stars?.run(parallax5)
     }
 }
